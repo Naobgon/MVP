@@ -14,6 +14,8 @@ from app.storage import (
     get_view_by_id,
     get_view_by_slug,
     create_view,
+    update_view,
+    delete_view,
     get_view_columns,
     add_view_column,
     update_view_column,
@@ -48,14 +50,10 @@ def dataframe_to_display(df: pd.DataFrame):
 
 def apply_computed_columns_in_eval_order(df: pd.DataFrame, computed_columns: list[dict]) -> pd.DataFrame:
     """
-    Считает вычисляемые колонки в стабильном порядке,
-    НЕ зависящем от sort_order отображения.
-
-    Для вычисления используем порядок по id (порядок создания),
-    чтобы изменение sort_order не ломало зависимости.
+    Вычисление идёт в стабильном порядке по id.
+    sort_order влияет только на отображение, а не на вычисление.
     """
     df = df.copy()
-
     eval_columns = sorted(computed_columns, key=lambda x: x["id"])
 
     for item in eval_columns:
@@ -77,24 +75,20 @@ def build_view_dataframe(view_obj: dict) -> pd.DataFrame:
 
     visible_items = []
 
-    # Исходные колонки — порядок показа
     for item in raw_columns:
         if item["is_visible"] and item["source_column_name"] in df.columns:
             visible_items.append({
                 "sort_order": item["sort_order"],
                 "display_name": item["display_name"],
                 "source_name": item["source_column_name"],
-                "kind": "raw",
             })
 
-    # Вычисляемые колонки — порядок показа
     for item in computed_columns:
         if item["is_visible"] and item["column_name"] in df.columns:
             visible_items.append({
                 "sort_order": item["sort_order"],
                 "display_name": item["column_name"],
                 "source_name": item["column_name"],
-                "kind": "computed",
             })
 
     visible_items.sort(key=lambda x: (x["sort_order"], x["display_name"]))
@@ -114,19 +108,10 @@ def validate_computed_columns_for_view(
     replace_column_id: int | None = None,
 ):
     """
-    Проверяет, что набор вычисляемых колонок можно корректно посчитать.
-
-    existing_computed_columns:
-        уже существующие колонки из БД
-
-    extra_or_updated_column:
-        новая или изменённая колонка, которую надо проверить
-
-    replace_column_id:
-        если это редактирование существующей колонки, указываем её id
+    Проверка, что вычисляемые колонки можно посчитать.
+    При редактировании replace_column_id исключается и заменяется новой версией.
     """
     df = load_csv(file_name).copy()
-
     computed_list = []
 
     for item in existing_computed_columns:
@@ -137,8 +122,6 @@ def validate_computed_columns_for_view(
     if extra_or_updated_column is not None:
         computed_list.append(dict(extra_or_updated_column))
 
-    # Считаем в порядке id, но у новой колонки id ещё нет
-    # Чтобы она шла после уже существующих, даём ей очень большой временный id
     for item in computed_list:
         if "id" not in item or item["id"] is None:
             item["id"] = 10**12
@@ -146,7 +129,7 @@ def validate_computed_columns_for_view(
     apply_computed_columns_in_eval_order(df, computed_list)
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/seifadmin_panel", response_class=HTMLResponse)
 async def admin_home(request: Request):
     views = get_all_views()
     files = list_csv_files()
@@ -202,6 +185,7 @@ async def edit_view(request: Request, view_id: int):
 
     raw_columns = get_view_columns(view_id)
     computed_columns = get_computed_columns(view_id)
+    files = list_csv_files()
 
     preview_columns = []
     preview_rows = []
@@ -223,8 +207,45 @@ async def edit_view(request: Request, view_id: int):
             "computed_columns": computed_columns,
             "preview_columns": preview_columns,
             "preview_rows": preview_rows,
+            "files": files,
         }
     )
+
+
+@app.post("/views/{view_id}/edit")
+async def update_view_handler(
+    view_id: int,
+    name: str = Form(...),
+    slug: str = Form(...),
+    file_name: str = Form(...),
+):
+    view_obj = get_view_by_id(view_id)
+    if not view_obj:
+        raise HTTPException(status_code=404, detail="View not found")
+
+    name = name.strip()
+    slug = slug.strip()
+    file_name = file_name.strip()
+
+    if not name or not slug or not file_name:
+        raise HTTPException(status_code=400, detail="All fields are required")
+
+    try:
+        update_view(view_id, name, slug, file_name)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to update view: {e}")
+
+    return RedirectResponse(url=f"/views/{view_id}", status_code=303)
+
+
+@app.post("/views/{view_id}/delete")
+async def delete_view_handler(view_id: int):
+    view_obj = get_view_by_id(view_id)
+    if not view_obj:
+        raise HTTPException(status_code=404, detail="View not found")
+
+    delete_view(view_id)
+    return RedirectResponse(url="/seifadmin_panel", status_code=303)
 
 
 @app.post("/views/{view_id}/raw-columns/{column_id}")
@@ -267,7 +288,6 @@ async def create_computed_column_handler(
 
     existing_computed = get_computed_columns(view_id)
 
-    # Проверяем, что новая колонка может ссылаться на уже существующие вычисляемые колонки
     try:
         validate_computed_columns_for_view(
             file_name=view_obj["file_name"],

@@ -90,6 +90,24 @@ def create_view(name: str, slug: str, file_name: str):
         return cur.lastrowid
 
 
+def update_view(view_id: int, name: str, slug: str, file_name: str):
+    with get_connection() as conn:
+        conn.execute("""
+            UPDATE views
+            SET name = ?, slug = ?, file_name = ?
+            WHERE id = ?
+        """, (name, slug, file_name, view_id))
+        conn.commit()
+
+
+def delete_view(view_id: int):
+    with get_connection() as conn:
+        conn.execute("DELETE FROM view_columns WHERE view_id = ?", (view_id,))
+        conn.execute("DELETE FROM computed_columns WHERE view_id = ?", (view_id,))
+        conn.execute("DELETE FROM views WHERE id = ?", (view_id,))
+        conn.commit()
+
+
 def get_view_columns(view_id: int):
     with get_connection() as conn:
         rows = conn.execute("""
@@ -146,11 +164,6 @@ def add_computed_column(view_id: int, column_name: str, formula: str, is_visible
         conn.commit()
 
 
-def delete_computed_column(column_id: int):
-    with get_connection() as conn:
-        conn.execute("DELETE FROM computed_columns WHERE id = ?", (column_id,))
-        conn.commit()
-
 def update_computed_column(column_id: int, column_name: str, formula: str, is_visible: int, sort_order: int):
     with get_connection() as conn:
         conn.execute("""
@@ -158,4 +171,10 @@ def update_computed_column(column_id: int, column_name: str, formula: str, is_vi
             SET column_name = ?, formula = ?, is_visible = ?, sort_order = ?
             WHERE id = ?
         """, (column_name, formula, is_visible, sort_order, column_id))
-        conn.commit()        
+        conn.commit()
+
+
+def delete_computed_column(column_id: int):
+    with get_connection() as conn:
+        conn.execute("DELETE FROM computed_columns WHERE id = ?", (column_id,))
+        conn.commit()

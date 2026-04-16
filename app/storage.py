@@ -150,3 +150,12 @@ def delete_computed_column(column_id: int):
     with get_connection() as conn:
         conn.execute("DELETE FROM computed_columns WHERE id = ?", (column_id,))
         conn.commit()
+
+def update_computed_column(column_id: int, column_name: str, formula: str, is_visible: int, sort_order: int):
+    with get_connection() as conn:
+        conn.execute("""
+            UPDATE computed_columns
+            SET column_name = ?, formula = ?, is_visible = ?, sort_order = ?
+            WHERE id = ?
+        """, (column_name, formula, is_visible, sort_order, column_id))
+        conn.commit()        

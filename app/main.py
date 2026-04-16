@@ -129,6 +129,11 @@ def validate_computed_columns_for_view(
     apply_computed_columns_in_eval_order(df, computed_list)
 
 
+@app.get("/")
+async def root_redirect():
+    return RedirectResponse(url="/seifadmin_panel", status_code=303)
+
+
 @app.get("/seifadmin_panel", response_class=HTMLResponse)
 async def admin_home(request: Request):
     views = get_all_views()
@@ -248,6 +253,43 @@ async def delete_view_handler(view_id: int):
     return RedirectResponse(url="/seifadmin_panel", status_code=303)
 
 
+# =========================
+# RAW COLUMNS
+# =========================
+
+@app.post("/views/{view_id}/raw-columns/bulk-save")
+async def bulk_update_raw_columns(request: Request, view_id: int):
+    view_obj = get_view_by_id(view_id)
+    if not view_obj:
+        raise HTTPException(status_code=404, detail="View not found")
+
+    form = await request.form()
+    raw_columns = get_view_columns(view_id)
+
+    for col in raw_columns:
+        cid = col["id"]
+        display_name = str(form.get(f"display_name_{cid}", "")).strip()
+        sort_order_raw = form.get(f"sort_order_{cid}", col["sort_order"])
+        is_visible = 1 if form.get(f"is_visible_{cid}") == "1" else 0
+
+        try:
+            sort_order = int(sort_order_raw)
+        except Exception:
+            sort_order = col["sort_order"]
+
+        if not display_name:
+            display_name = col["display_name"]
+
+        update_view_column(
+            column_id=cid,
+            display_name=display_name,
+            is_visible=is_visible,
+            sort_order=sort_order,
+        )
+
+    return RedirectResponse(url=f"/views/{view_id}", status_code=303)
+
+
 @app.post("/views/{view_id}/raw-columns/{column_id}")
 async def update_raw_column(
     view_id: int,
@@ -265,6 +307,10 @@ async def update_raw_column(
 
     return RedirectResponse(url=f"/views/{view_id}", status_code=303)
 
+
+# =========================
+# COMPUTED COLUMNS
+# =========================
 
 @app.post("/views/{view_id}/computed-columns")
 async def create_computed_column_handler(
@@ -310,6 +356,62 @@ async def create_computed_column_handler(
         is_visible=1 if is_visible == "1" else 0,
         sort_order=sort_order,
     )
+
+    return RedirectResponse(url=f"/views/{view_id}", status_code=303)
+
+
+@app.post("/views/{view_id}/computed-columns/bulk-save")
+async def bulk_update_computed_columns(request: Request, view_id: int):
+    view_obj = get_view_by_id(view_id)
+    if not view_obj:
+        raise HTTPException(status_code=404, detail="View not found")
+
+    form = await request.form()
+    existing_computed = get_computed_columns(view_id)
+
+    updated_columns = []
+
+    for col in existing_computed:
+        cid = col["id"]
+
+        column_name = str(form.get(f"column_name_{cid}", "")).strip()
+        formula = str(form.get(f"formula_{cid}", "")).strip()
+        sort_order_raw = form.get(f"sort_order_{cid}", col["sort_order"])
+        is_visible = 1 if form.get(f"is_visible_{cid}") == "1" else 0
+
+        try:
+            sort_order = int(sort_order_raw)
+        except Exception:
+            sort_order = col["sort_order"]
+
+        if not column_name:
+            column_name = col["column_name"]
+        if not formula:
+            formula = col["formula"]
+
+        updated_columns.append({
+            "id": cid,
+            "view_id": view_id,
+            "column_name": column_name,
+            "formula": formula,
+            "is_visible": is_visible,
+            "sort_order": sort_order,
+        })
+
+    try:
+        df = load_csv(view_obj["file_name"]).copy()
+        apply_computed_columns_in_eval_order(df, updated_columns)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Ошибка сохранения вычисляемых колонок: {e}")
+
+    for col in updated_columns:
+        update_computed_column(
+            column_id=col["id"],
+            column_name=col["column_name"],
+            formula=col["formula"],
+            is_visible=col["is_visible"],
+            sort_order=col["sort_order"],
+        )
 
     return RedirectResponse(url=f"/views/{view_id}", status_code=303)
 

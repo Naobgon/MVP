@@ -12,6 +12,9 @@
         input, select, button { padding: 6px; margin: 4px 0; }
         .table-wrap { max-height: 500px; overflow: auto; }
         .danger { margin-top: 10px; }
+        .actions { margin-top: 10px; }
+        .wide-input { width: 100%; box-sizing: border-box; }
+        .small-input { width: 100px; }
     </style>
 </head>
 <body>
@@ -51,39 +54,48 @@
 
     <div class="section">
         <h2>Сырые колонки</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Исходная колонка</th>
-                    <th>Название для показа</th>
-                    <th>Видна</th>
-                    <th>Порядок</th>
-                    <th>Сохранить</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for c in raw_columns %}
-                <tr>
-                    <form method="post" action="/views/{{ view_obj.id }}/raw-columns/{{ c.id }}">
+        <form method="post" action="/views/{{ view_obj.id }}/raw-columns/bulk-save">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Исходная колонка</th>
+                        <th>Название для показа</th>
+                        <th>Видна</th>
+                        <th>Порядок</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in raw_columns %}
+                    <tr>
                         <td>{{ c.source_column_name }}</td>
                         <td>
-                            <input type="text" name="display_name" value="{{ c.display_name }}" style="width: 250px;">
+                            <input
+                                type="text"
+                                name="display_name_{{ c.id }}"
+                                value="{{ c.display_name }}"
+                                class="wide-input"
+                            >
                         </td>
                         <td>
-                            <input type="hidden" name="is_visible" value="0">
-                            <input type="checkbox" name="is_visible" value="1" {% if c.is_visible %}checked{% endif %}>
+                            <input type="checkbox" name="is_visible_{{ c.id }}" value="1" {% if c.is_visible %}checked{% endif %}>
                         </td>
                         <td>
-                            <input type="number" name="sort_order" value="{{ c.sort_order }}" style="width: 100px;">
+                            <input
+                                type="number"
+                                name="sort_order_{{ c.id }}"
+                                value="{{ c.sort_order }}"
+                                class="small-input"
+                            >
                         </td>
-                        <td>
-                            <button type="submit">Сохранить</button>
-                        </td>
-                    </form>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="actions">
+                <button type="submit">Сохранить все сырые колонки</button>
+            </div>
+        </form>
     </div>
 
     <div class="section">
@@ -113,47 +125,61 @@
     <div class="section">
         <h2>Вычисляемые колонки</h2>
         {% if computed_columns %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Название</th>
-                    <th>Формула</th>
-                    <th>Видна</th>
-                    <th>Порядок</th>
-                    <th>Сохранить</th>
-                    <th>Удалить</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for c in computed_columns %}
-                <tr>
-                    <td>
-                        <form method="post" action="/views/{{ view_obj.id }}/computed-columns/{{ c.id }}">
-                            <input type="text" name="column_name" value="{{ c.column_name }}" style="width: 260px;">
-                    </td>
-                    <td>
-                            <input type="text" name="formula" value="{{ c.formula }}" style="width: 700px;">
-                    </td>
-                    <td>
-                            <input type="hidden" name="is_visible" value="0">
-                            <input type="checkbox" name="is_visible" value="1" {% if c.is_visible %}checked{% endif %}>
-                    </td>
-                    <td>
-                            <input type="number" name="sort_order" value="{{ c.sort_order }}" style="width: 100px;">
-                    </td>
-                    <td>
-                            <button type="submit">Сохранить</button>
-                        </form>
-                    </td>
-                    <td>
-                        <form method="post" action="/views/{{ view_obj.id }}/computed-columns/{{ c.id }}/delete" onsubmit="return confirm('Удалить вычисляемую колонку?');">
-                            <button type="submit">Удалить</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <form method="post" action="/views/{{ view_obj.id }}/computed-columns/bulk-save">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Название</th>
+                        <th>Формула</th>
+                        <th>Видна</th>
+                        <th>Порядок</th>
+                        <th>Удалить</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in computed_columns %}
+                    <tr>
+                        <td>
+                            <input
+                                type="text"
+                                name="column_name_{{ c.id }}"
+                                value="{{ c.column_name }}"
+                                class="wide-input"
+                            >
+                        </td>
+                        <td>
+                            <input
+                                type="text"
+                                name="formula_{{ c.id }}"
+                                value="{{ c.formula }}"
+                                class="wide-input"
+                            >
+                        </td>
+                        <td>
+                            <input type="checkbox" name="is_visible_{{ c.id }}" value="1" {% if c.is_visible %}checked{% endif %}>
+                        </td>
+                        <td>
+                            <input
+                                type="number"
+                                name="sort_order_{{ c.id }}"
+                                value="{{ c.sort_order }}"
+                                class="small-input"
+                            >
+                        </td>
+                        <td>
+                            <form method="post" action="/views/{{ view_obj.id }}/computed-columns/{{ c.id }}/delete" onsubmit="return confirm('Удалить вычисляемую колонку?');">
+                                <button type="submit">Удалить</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="actions">
+                <button type="submit">Сохранить все вычисляемые колонки</button>
+            </div>
+        </form>
         {% else %}
             <p>Пока нет вычисляемых колонок.</p>
         {% endif %}

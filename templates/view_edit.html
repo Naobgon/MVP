@@ -92,16 +92,31 @@
                     <th>Формула</th>
                     <th>Видна</th>
                     <th>Порядок</th>
+                    <th>Сохранить</th>
                     <th>Удалить</th>
                 </tr>
             </thead>
             <tbody>
                 {% for c in computed_columns %}
                 <tr>
-                    <td>{{ c.column_name }}</td>
-                    <td>{{ c.formula }}</td>
-                    <td>{{ "Да" if c.is_visible else "Нет" }}</td>
-                    <td>{{ c.sort_order }}</td>
+                    <td>
+                        <form method="post" action="/views/{{ view_obj.id }}/computed-columns/{{ c.id }}">
+                            <input type="text" name="column_name" value="{{ c.column_name }}" style="width: 260px;">
+                    </td>
+                    <td>
+                            <input type="text" name="formula" value="{{ c.formula }}" style="width: 700px;">
+                    </td>
+                    <td>
+                            <input type="hidden" name="is_visible" value="0">
+                            <input type="checkbox" name="is_visible" value="1" {% if c.is_visible %}checked{% endif %}>
+                    </td>
+                    <td>
+                            <input type="number" name="sort_order" value="{{ c.sort_order }}" style="width: 100px;">
+                    </td>
+                    <td>
+                            <button type="submit">Сохранить</button>
+                        </form>
+                    </td>
                     <td>
                         <form method="post" action="/views/{{ view_obj.id }}/computed-columns/{{ c.id }}/delete" onsubmit="return confirm('Удалить вычисляемую колонку?');">
                             <button type="submit">Удалить</button>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Админка витрин</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #999; padding: 8px; text-align: left; }
+        th { background: #f0f0f0; }
+        input, select, button { padding: 6px; margin: 4px 0; }
+        a { text-decoration: none; }
+    </style>
+</head>
+<body>
+    <h1>Админка витрин</h1>
+
+    <div class="section">
+        <h2>Создать витрину</h2>
+        <form method="post" action="/views">
+            <div>
+                <label>Название витрины:</label><br>
+                <input type="text" name="name" required style="width: 300px;">
+            </div>
+            <div>
+                <label>Slug:</label><br>
+                <input type="text" name="slug" required style="width: 300px;">
+            </div>
+            <div>
+                <label>CSV файл:</label><br>
+                <select name="file_name" required style="width: 300px;">
+                    {% for f in files %}
+                    <option value="{{ f }}">{{ f }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit">Создать витрину</button>
+        </form>
+    </div>
+
+    <div class="section">
+        <h2>Существующие витрины</h2>
+        {% if views %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Slug</th>
+                    <th>CSV</th>
+                    <th>Редактировать</th>
+                    <th>Публичная ссылка</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in views %}
+                <tr>
+                    <td>{{ v.id }}</td>
+                    <td>{{ v.name }}</td>
+                    <td>{{ v.slug }}</td>
+                    <td>{{ v.file_name }}</td>
+                    <td><a href="/views/{{ v.id }}">Открыть</a></td>
+                    <td><a href="/view/{{ v.slug }}" target="_blank">/view/{{ v.slug }}</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>Витрин пока нет.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

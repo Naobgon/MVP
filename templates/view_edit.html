@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование витрины</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #999; padding: 8px; text-align: left; vertical-align: top; }
+        th { background: #f0f0f0; }
+        input, select, button { padding: 6px; margin: 4px 0; }
+        .table-wrap { max-height: 500px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <p><a href="/">← Назад</a></p>
+
+    <h1>{{ view_obj.name }}</h1>
+    <p><b>Slug:</b> {{ view_obj.slug }}</p>
+    <p><b>Источник:</b> {{ view_obj.file_name }}</p>
+    <p><b>Публичная ссылка:</b> <a href="/view/{{ view_obj.slug }}" target="_blank">/view/{{ view_obj.slug }}</a></p>
+
+    <div class="section">
+        <h2>Сырые колонки</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Исходная колонка</th>
+                    <th>Название для показа</th>
+                    <th>Видна</th>
+                    <th>Порядок</th>
+                    <th>Сохранить</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in raw_columns %}
+                <tr>
+                    <form method="post" action="/views/{{ view_obj.id }}/raw-columns/{{ c.id }}">
+                        <td>{{ c.source_column_name }}</td>
+                        <td>
+                            <input type="text" name="display_name" value="{{ c.display_name }}" style="width: 250px;">
+                        </td>
+                        <td>
+                            <input type="hidden" name="is_visible" value="0">
+                            <input type="checkbox" name="is_visible" value="1" {% if c.is_visible %}checked{% endif %}>
+                        </td>
+                        <td>
+                            <input type="number" name="sort_order" value="{{ c.sort_order }}" style="width: 100px;">
+                        </td>
+                        <td>
+                            <button type="submit">Сохранить</button>
+                        </td>
+                    </form>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Добавить вычисляемую колонку</h2>
+        <form method="post" action="/views/{{ view_obj.id }}/computed-columns">
+            <div>
+                <label>Название:</label><br>
+                <input type="text" name="column_name" required style="width: 350px;">
+            </div>
+            <div>
+                <label>Формула:</label><br>
+                <input type="text" name="formula" required style="width: 800px;">
+            </div>
+            <div>
+                <label>Порядок:</label><br>
+                <input type="number" name="sort_order" value="1000" style="width: 120px;">
+            </div>
+            <div>
+                <input type="hidden" name="is_visible" value="0">
+                <input type="checkbox" name="is_visible" value="1" checked> Видима
+            </div>
+            <p>Пример: ([Кол-во велосипедов всего] - [Кол-во велосипедов в ремонте]) / [Кол-во велосипедов всего] * 100</p>
+            <button type="submit">Добавить</button>
+        </form>
+    </div>
+
+    <div class="section">
+        <h2>Вычисляемые колонки</h2>
+        {% if computed_columns %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Формула</th>
+                    <th>Видна</th>
+                    <th>Порядок</th>
+                    <th>Удалить</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in computed_columns %}
+                <tr>
+                    <td>{{ c.column_name }}</td>
+                    <td>{{ c.formula }}</td>
+                    <td>{{ "Да" if c.is_visible else "Нет" }}</td>
+                    <td>{{ c.sort_order }}</td>
+                    <td>
+                        <form method="post" action="/views/{{ view_obj.id }}/computed-columns/{{ c.id }}/delete" onsubmit="return confirm('Удалить вычисляемую колонку?');">
+                            <button type="submit">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>Пока нет вычисляемых колонок.</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Предпросмотр витрины</h2>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        {% for col in preview_columns %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in preview_rows %}
+                    <tr>
+                        {% for col in preview_columns %}
+                        <td>{{ row.get(col, "") }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
